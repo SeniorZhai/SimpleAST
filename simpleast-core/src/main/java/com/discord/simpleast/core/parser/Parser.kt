@@ -2,7 +2,8 @@ package com.discord.simpleast.core.parser
 
 import android.util.Log
 import com.discord.simpleast.core.node.Node
-import java.util.*
+import java.util.ArrayList
+import java.util.Stack
 
 
 /**
@@ -41,11 +42,11 @@ open class Parser<R, T : Node<R>, S> @JvmOverloads constructor(private val enabl
 
     var lastCapture: String? = null
 
-    if (source != null && !source.isEmpty()) {
+    if (source != null && source.isNotEmpty()) {
       remainingParses.add(ParseSpec(null, initialState, 0, source.length))
     }
 
-    while (!remainingParses.isEmpty()) {
+    while (remainingParses.isNotEmpty()) {
       val builder = remainingParses.pop()
 
       if (builder.startIndex >= builder.endIndex) {
@@ -70,15 +71,10 @@ open class Parser<R, T : Node<R>, S> @JvmOverloads constructor(private val enabl
             parent?.addChild(it) ?: topLevelNodes.add(it)
           }
 
-          // In case the last match didn't consume the rest of the source for this subtree,
-          // make sure the rest of the source is consumed.
           if (matcherSourceEnd != builder.endIndex) {
             remainingParses.push(ParseSpec.createNonterminal(parent, builder.state, matcherSourceEnd, builder.endIndex))
           }
 
-          // We want to speak in terms of indices within the source string,
-          // but the Rules only see the matchers in the context of the substring
-          // being examined. Adding this offset addresses that issue.
           if (!newBuilder.isTerminal) {
             newBuilder.applyOffset(offset)
             remainingParses.push(newBuilder)
@@ -89,7 +85,6 @@ open class Parser<R, T : Node<R>, S> @JvmOverloads constructor(private val enabl
           } catch (throwable: Throwable) {
             throw ParseException(message = "matcher found no matches", source = source, cause = throwable)
           }
-//          println("source: $inspectionSource -- depth: ${remainingParses.size}")
 
           break
         } else {

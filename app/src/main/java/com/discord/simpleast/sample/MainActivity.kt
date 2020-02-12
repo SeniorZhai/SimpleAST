@@ -1,9 +1,13 @@
 package com.discord.simpleast.sample
 
 import android.annotation.SuppressLint
+import android.graphics.Color
 import android.os.Bundle
 import android.support.v7.app.AppCompatActivity
+import android.text.Spannable
+import android.text.SpannableString
 import android.text.SpannableStringBuilder
+import android.text.method.LinkMovementMethod
 import android.util.Log
 import android.view.View
 import android.widget.EditText
@@ -14,162 +18,104 @@ import com.discord.simpleast.core.node.TextNode
 import com.discord.simpleast.core.parser.ParseSpec
 import com.discord.simpleast.core.parser.Parser
 import com.discord.simpleast.core.parser.Rule
-import com.discord.simpleast.core.simple.SimpleMarkdownRules
-import com.discord.simpleast.core.simple.SimpleRenderer
+import com.discord.simpleast.core.simple.SimpleRenderer.render
 import java.util.regex.Matcher
 import java.util.regex.Pattern
 
 private const val SAMPLE_TEXT = """
-  Some really long introduction text that goes on forever explaining something.
-
-  newline above
-
-  Alt. __H1__ title
-  =======
-  stuff
-
-  Alt. __H1__ remove marginTop {remove marginTop}
-  =======
-
-  Alt. __H2__ title
-  -----
-  * **bold item**
-  * another point that is really obvious but just explained to death and should be half the length in reality
-
-  # Conclusion __H1__
-  So in conclusion. This whole endeavour was just a really long waste of time.
-
-
-  ## Appendix __H2__
-  ### Sources __H3__
-  * mind's eye
-  * friend of a friend
-  
-  > Quoted
-  Not quoted
-  >> Quote with literal > at the beginning
-  Not quoted
-  >>>The rest of the message is quoted
-  Even here
-  > Literal > at beginning of line
-  >>> Literal >>> at beginning of line
-  Still quoted
+  Hello @123 你好 @456 哈哈 @678
   """
 
 class MainActivity : AppCompatActivity() {
 
-  private lateinit var resultText: TextView
-  private lateinit var input: EditText
+    private lateinit var resultText: TextView
+    private lateinit var input: EditText
 
-  @SuppressLint("SetTextI18n")
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
-    setContentView(R.layout.activity_main)
+    @SuppressLint("SetTextI18n")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_main)
 
-    resultText = findViewById(R.id.result_text)
-    input = findViewById(R.id.input)
+        resultText = findViewById(R.id.result_text)
+        input = findViewById(R.id.input)
 
-    input.setText(SAMPLE_TEXT.trimIndent())
+        input.setText(SAMPLE_TEXT.trimIndent())
 
-    findViewById<View>(R.id.benchmark_btn).setOnClickListener {
-      val times = 50.0
-      var totalDuration = 0L
-      var i = 0
-      while (i < times) {
-        val start = System.currentTimeMillis()
-        testParse(50)
-        val end = System.currentTimeMillis()
-        val duration = end - start
-        totalDuration += duration
-        Log.d("timer", "duration of parse: $duration ms")
-        i++
-      }
-      Log.d("timer", "average parse time: " + totalDuration / times + " ms")
+        findViewById<View>(R.id.test_btn).setOnClickListener {
+            parseInput()
+        }
+
+        (findViewById<View>(R.id.result_text) as TextView).movementMethod =
+            LinkMovementMethod.getInstance()
+        parseInput()
     }
 
-    findViewById<View>(R.id.test_btn).setOnClickListener {
-      parseInput()
+    private fun parseInput() {
+        val renderContext = RenderContext(
+            mapOf(
+                "123" to "User1234",
+                "456" to "User456",
+                "678" to "User678"
+            )
+        ) {
+            Log.d("---", it)
+        }
+        val rules = mutableListOf<Rule<RenderContext, Node<RenderContext>, Any?>>()
+        rules.add(NonterminalRule())
+        rules.add(UserRule())
+        val parser = Parser<RenderContext, Node<RenderContext>, Any?>(true)
+        parser.addRules(rules)
+        findViewById<TextView>(R.id.result_text).text =
+            render(SAMPLE_TEXT, parser, renderContext, 1)
     }
-    parseInput()
-  }
 
-  data class ParseState(override val isInQuote: Boolean) : CustomMarkdownRules.BlockQuoteState<ParseState> {
-    override fun newBlockQuoteState(isInQuote: Boolean): ParseState = ParseState(isInQuote)
-  }
+    data class RenderContext(val userMap: Map<String, String>, val action: (String) -> Unit)
 
-  private fun parseInput() {
-    val parser = Parser<RenderContext, Node<RenderContext>, ParseState>()
-        .addRule(UserMentionRule())
-        .addRule(CustomMarkdownRules.createBlockQuoteRule<RenderContext, ParseState>())
-        .addRules(CustomMarkdownRules.createMarkdownRules(
-            this,
-            listOf(R.style.Demo_Header_1, R.style.Demo_Header_2, R.style.Demo_Header_3),
-            listOf(R.style.Demo_Header_1_Add, R.style.Demo_Header_1_Remove, R.style.Demo_Header_1_Fix)))
-        .addRules(SimpleMarkdownRules.createSimpleMarkdownRules())
-
-    resultText.text = SimpleRenderer.render(
-        source = input.text,
-        parser = parser,
-        initialState = ParseState(false),
-        renderContext = RenderContext(mapOf(1234 to "User1234"))
-    )
-  }
-
-  private fun createTestText() = """
-    Test __Inner **nested** rules__ as well as *look ahead* rules
-    ==========
-
-    [0;31mERROR:[0m Signature extraction failed: Traceback (most recent call last):
-  File "/usr/local/lib/python3.5/dist-packages/youtube_dl/extractor/youtube.py", line 1011, in _decrypt_signature
-    video_id, player_url, s
-  File "/usr/local/lib/python3.5/dist-packages/youtube_dl/extractor/youtube.py", line 925, in _extract_signature_function
-    errnote='Download of %s failed' % player_url)
-  File "/usr/local/lib/python3.5/dist-packages/youtube_dl/extractor/common.py", line 519, in _download_webpage
-    res = self._download_webpage_handle(url_or_request, video_id, note, errnote, fatal, encoding=encoding, data=data, headers=headers, query=query)
-  File "/usr/local/lib/python3.5/dist-packages/youtube_dl/extractor/common.py", line 426, in _download_webpage_handle
-    urlh = self._request_webpage(url_or_request, video_id, note, errnote, fatal, data=data, headers=headers, query=query)
-  File "/usr/local/lib/python3.5/dist-packages/youtube_dl/extractor/common.py", line 406, in _request_webpage
-    return self._downloader.urlopen(url_or_request)
-  File "/usr/local/lib/python3.5/dist-packages/youtube_dl/YoutubeDL.py", line 2000, in urlopen
-    req = sanitized_Request(req)
-  File "/usr/local/lib/python3.5/dist-packages/youtube_dl/utils.py", line 518, in sanitized_Request
-    return compat_urllib_request.Request(sanitize_url(url), *args, **kwargs)
-  File "/usr/lib/python3.5/urllib/request.py", line 269, in init
-    self.full_url = url
-  File "/usr/lib/python3.5/urllib/request.py", line 295, in full_url
-    self._parse()
-  File "/usr/lib/python3.5/urllib/request.py", line 324, in _parse
-    raise ValueError("unknown url type: %r" % self.full_url)
-  ValueError: unknown url type: '/yts/jsbin/player-en_US-vflkk7pUE/base.js'
-   (caused by ValueError("unknown url type: '/yts/jsbin/player-en_US-vflkk7pUE/base.js'",))
- """
-
-  private fun testParse(times: Int) {
-    val text = createTestText()
-
-    for (i in 0 until times) {
-      SimpleRenderer.renderBasicMarkdown(text, resultText)
+    class NonterminalRule :
+        Rule<RenderContext, Node<RenderContext>, Any?>(Pattern.compile("^@\\d+")) {
+        override fun parse(
+            matcher: Matcher,
+            parser: Parser<RenderContext, in Node<RenderContext>, Any?>,
+            state: Any?
+        ): ParseSpec<RenderContext, Node<RenderContext>, Any?> {
+            return ParseSpec.createTerminal(ClickNode(matcher.group()), state)
+        }
     }
-  }
 
-  @Suppress("unused")
-  class FooRule<S> : Rule<Any?, Node<Any?>, S>(Pattern.compile("^<Foo>")) {
-    override fun parse(matcher: Matcher, parser: Parser<Any?, in Node<Any?>, S>, state: S): ParseSpec<Any?, Node<Any?>, S> {
-      return ParseSpec.createTerminal(TextNode("Bar"), state)
-    }
-  }
+    class ClickNode(val content: String) : Node<RenderContext>() {
+        override fun render(builder: SpannableStringBuilder, renderContext: RenderContext) {
+            val number = content.substring(1)
+            var name = renderContext.userMap[number] ?: return
+            name = "@$name"
+            val sp = SpannableString(name)
+            val clickableSpan = object : TouchableSpan(Color.RED, Color.BLUE, false) {
+                override fun onClick(widget: View) {
+                    renderContext.action(number)
+                }
+            }
 
-  data class RenderContext(val usernameMap: Map<Int, String>)
-  class UserNode(private val userId: Int) : Node<RenderContext>() {
-    override fun render(builder: SpannableStringBuilder, renderContext: RenderContext) {
-      builder.append(renderContext.usernameMap[userId] ?: "Invalid User")
-    }
-  }
+            sp.setSpan(
+                clickableSpan,
+                0, name.length,
+                Spannable.SPAN_EXCLUSIVE_EXCLUSIVE
+            )
+            builder.append(sp)
+        }
 
-  class UserMentionRule<S> : Rule<RenderContext, UserNode, S>(Pattern.compile("^<(\\d+)>")) {
-    override fun parse(matcher: Matcher, parser: Parser<RenderContext, in UserNode, S>, state: S): ParseSpec<RenderContext, UserNode, S> {
-      return ParseSpec.createTerminal(UserNode(matcher.group(1).toInt()), state)
+        override fun toString() = "${javaClass.simpleName}[${getChildren()?.size}]: $content"
     }
-  }
+
+    class UserRule :
+        Rule<RenderContext, Node<RenderContext>, Any?>(Pattern.compile("^[\\s\\S]+?(?=[^0-9A-Za-z\\s\\u00c0-\\uffff]|\\n| {2,}\\n|\\w+:\\S|$)")) {
+
+        override fun parse(
+            matcher: Matcher,
+            parser: Parser<RenderContext, in Node<RenderContext>, Any?>,
+            state: Any?
+        ): ParseSpec<RenderContext, Node<RenderContext>, Any?> {
+            return ParseSpec.createTerminal(TextNode(matcher.group()), state)
+        }
+    }
 }
+
 
