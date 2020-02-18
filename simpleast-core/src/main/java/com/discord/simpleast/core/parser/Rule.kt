@@ -16,7 +16,7 @@ import java.util.regex.Pattern
  *          nodes, not just child nodes), and therefore will likely need some sort of clone method
  *          in order to create a copy with different values to pass into the returned [ParseSpec].
  */
-abstract class Rule<R, T : Node<R>, S>(val matcher: Matcher) {
+abstract class Rule<R, T : Node<R>>(val matcher: Matcher) {
 
   constructor(pattern: Pattern) : this(pattern.matcher(""))
 
@@ -28,25 +28,12 @@ abstract class Rule<R, T : Node<R>, S>(val matcher: Matcher) {
    *
    * @return a [Matcher] if the rule applies, else null
    */
-  open fun match(inspectionSource: CharSequence, lastCapture: String?, state: S): Matcher? {
+  open fun match(inspectionSource: CharSequence, lastCapture: String?): Matcher? {
     matcher.reset(inspectionSource)
     return if (matcher.find()) matcher else null
   }
 
-  abstract fun parse(matcher: Matcher, parser: Parser<R, in T, S>, state: S): ParseSpec<R, T, S>
+  abstract fun parse(matcher: Matcher, parser: Parser<R, in T> ): ParseSpec<R, T>
 
-  /**
-   * A [Rule] that ensures that the [matcher] is only executed if the preceding capture was a newline.
-   * e.g. this ensures that the regex parses from a newline.
-   */
-  abstract class BlockRule<R, T : Node<R>, S>(pattern: Pattern) : Rule<R, T, S>(pattern) {
-
-    override fun match(inspectionSource: CharSequence, lastCapture: String?, state: S): Matcher? {
-      if (lastCapture?.endsWith('\n') != false) {
-        return super.match(inspectionSource, lastCapture, state)
-      }
-      return null
-    }
-  }
 }
 

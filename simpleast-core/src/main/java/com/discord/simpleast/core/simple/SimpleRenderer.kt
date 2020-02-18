@@ -8,18 +8,18 @@ import com.discord.simpleast.core.parser.Rule
 object SimpleRenderer {
 
   @JvmStatic
-  fun <R, S> render(source: CharSequence, rules: Collection<Rule<R, Node<R>, S>>, initialState: S, renderContext: R): SpannableStringBuilder {
-    val parser = Parser<R, Node<R>, S>()
+  fun <R, S> render(source: CharSequence, rules: Collection<Rule<R, Node<R>>>, initialState: S, renderContext: R): SpannableStringBuilder {
+    val parser = Parser<R, Node<R>>()
     for (rule in rules) {
       parser.addRule(rule)
     }
 
-    return render(SpannableStringBuilder(), parser.parse(source, initialState), renderContext)
+    return render(SpannableStringBuilder(), parser.parse(source), renderContext)
   }
 
   @JvmStatic
-  fun <R, S> render(source: CharSequence, parser: Parser<R, Node<R>, S>, renderContext: R, initialState: S): SpannableStringBuilder {
-    return render(SpannableStringBuilder(), parser.parse(source, initialState), renderContext)
+  fun <R, S> render(source: CharSequence, parser: Parser<R, Node<R>>, renderContext: R, initialState: S): SpannableStringBuilder {
+    return render(SpannableStringBuilder(), parser.parse(source), renderContext)
   }
 
   @JvmStatic

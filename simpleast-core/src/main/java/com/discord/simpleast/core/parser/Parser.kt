@@ -11,16 +11,16 @@ import java.util.Stack
  *          See [Node.render]
  * @param T The type of nodes that are handled.
  */
-open class Parser<R, T : Node<R>, S> @JvmOverloads constructor(private val enableDebugging: Boolean = false) {
+open class Parser<R, T : Node<R>> @JvmOverloads constructor(private val enableDebugging: Boolean = false) {
 
-  private val rules = ArrayList<Rule<R, out T, S>>()
+  private val rules = ArrayList<Rule<R, out T>>()
 
-  fun <C : T> addRule(rule: Rule<R, C, S>): Parser<R, T, S> {
+  fun <C : T> addRule(rule: Rule<R, C>): Parser<R, T> {
     rules.add(rule)
     return this
   }
 
-  fun <C: T> addRules(rules: Collection<Rule<R, C, S>>): Parser<R, T, S> {
+  fun <C: T> addRules(rules: Collection<Rule<R, C>>): Parser<R, T> {
     for (rule in rules) {
       addRule(rule)
     }
@@ -36,14 +36,14 @@ open class Parser<R, T : Node<R>, S> @JvmOverloads constructor(private val enabl
    * @throws ParseException for certain specific error flows.
    */
   @JvmOverloads
-  fun parse(source: CharSequence?, initialState: S, rules: List<Rule<R, out T, S>> = this.rules): MutableList<T> {
-    val remainingParses = Stack<ParseSpec<R, out T, S>>()
+  fun parse(source: CharSequence?, rules: List<Rule<R, out T>> = this.rules): MutableList<T> {
+    val remainingParses = Stack<ParseSpec<R, out T>>()
     val topLevelNodes = ArrayList<T>()
 
     var lastCapture: String? = null
 
     if (source != null && source.isNotEmpty()) {
-      remainingParses.add(ParseSpec(null, initialState, 0, source.length))
+      remainingParses.add(ParseSpec(null, 0, source.length))
     }
 
     while (remainingParses.isNotEmpty()) {
@@ -58,13 +58,13 @@ open class Parser<R, T : Node<R>, S> @JvmOverloads constructor(private val enabl
 
       var foundRule = false
       for (rule in rules) {
-        val matcher = rule.match(inspectionSource, lastCapture, builder.state)
+        val matcher = rule.match(inspectionSource, lastCapture)
         if (matcher != null) {
           logMatch(rule, inspectionSource)
           val matcherSourceEnd = matcher.end() + offset
           foundRule = true
 
-          val newBuilder = rule.parse(matcher, this, builder.state)
+          val newBuilder = rule.parse(matcher, this)
           val parent = builder.root
 
           newBuilder.root?.let {
@@ -72,7 +72,7 @@ open class Parser<R, T : Node<R>, S> @JvmOverloads constructor(private val enabl
           }
 
           if (matcherSourceEnd != builder.endIndex) {
-            remainingParses.push(ParseSpec.createNonterminal(parent, builder.state, matcherSourceEnd, builder.endIndex))
+            remainingParses.push(ParseSpec.createNonterminal(parent, matcherSourceEnd, builder.endIndex))
           }
 
           if (!newBuilder.isTerminal) {
@@ -100,13 +100,13 @@ open class Parser<R, T : Node<R>, S> @JvmOverloads constructor(private val enabl
     return topLevelNodes
   }
 
-  private fun <R, T: Node<R>, S> logMatch(rule: Rule<R, T, S>, source: CharSequence) {
+  private fun <R, T: Node<R>> logMatch(rule: Rule<R, T>, source: CharSequence) {
     if (enableDebugging) {
       Log.i(TAG, "MATCH: with rule with pattern: " + rule.matcher.pattern().toString() + " to source: " + source)
     }
   }
 
-  private fun <R, T: Node<R>, S> logMiss(rule: Rule<R, T, S>, source: CharSequence) {
+  private fun <R, T: Node<R>> logMiss(rule: Rule<R, T>, source: CharSequence) {
     if (enableDebugging) {
       Log.i(TAG, "MISS: with rule with pattern: " + rule.matcher.pattern().toString() + " to source: " + source)
     }

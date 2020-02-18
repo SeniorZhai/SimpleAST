@@ -60,10 +60,10 @@ class MainActivity : AppCompatActivity() {
         ) {
             Log.d("---", it)
         }
-        val rules = mutableListOf<Rule<RenderContext, Node<RenderContext>, Any?>>()
+        val rules = mutableListOf<Rule<RenderContext, Node<RenderContext>>>()
         rules.add(NonterminalRule())
         rules.add(UserRule())
-        val parser = Parser<RenderContext, Node<RenderContext>, Any?>(true)
+        val parser = Parser<RenderContext, Node<RenderContext>>(true)
         parser.addRules(rules)
         findViewById<TextView>(R.id.result_text).text =
             render(SAMPLE_TEXT, parser, renderContext, 1)
@@ -72,13 +72,13 @@ class MainActivity : AppCompatActivity() {
     data class RenderContext(val userMap: Map<String, String>, val action: (String) -> Unit)
 
     class NonterminalRule :
-        Rule<RenderContext, Node<RenderContext>, Any?>(Pattern.compile("^@\\d+")) {
+        Rule<RenderContext, Node<RenderContext>>(Pattern.compile("^@\\d+")) {
+
         override fun parse(
             matcher: Matcher,
-            parser: Parser<RenderContext, in Node<RenderContext>, Any?>,
-            state: Any?
-        ): ParseSpec<RenderContext, Node<RenderContext>, Any?> {
-            return ParseSpec.createTerminal(ClickNode(matcher.group()), state)
+            parser: Parser<RenderContext, in Node<RenderContext>>
+        ): ParseSpec<RenderContext, Node<RenderContext>> {
+            return ParseSpec.createTerminal(ClickNode(matcher.group()))
         }
     }
 
@@ -106,14 +106,13 @@ class MainActivity : AppCompatActivity() {
     }
 
     class UserRule :
-        Rule<RenderContext, Node<RenderContext>, Any?>(Pattern.compile("^[\\s\\S]+?(?=[^0-9A-Za-z\\s\\u00c0-\\uffff]|\\n| {2,}\\n|\\w+:\\S|$)")) {
+        Rule<RenderContext, Node<RenderContext>>(Pattern.compile("^[\\s\\S]+?(?=[^0-9A-Za-z\\s\\u00c0-\\uffff]|\\n| {2,}\\n|\\w+:\\S|$)")) {
 
         override fun parse(
             matcher: Matcher,
-            parser: Parser<RenderContext, in Node<RenderContext>, Any?>,
-            state: Any?
-        ): ParseSpec<RenderContext, Node<RenderContext>, Any?> {
-            return ParseSpec.createTerminal(TextNode(matcher.group()), state)
+            parser: Parser<RenderContext, in Node<RenderContext>>
+        ): ParseSpec<RenderContext, Node<RenderContext>> {
+            return ParseSpec.createTerminal(TextNode(matcher.group()))
         }
     }
 }
